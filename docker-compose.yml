@@ -1,0 +1,9 @@
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./app:/code/app   # live-reload friendly: edit locally, container sees it
+    environment:
+      - PYTHONUNBUFFERED=1
