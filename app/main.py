@@ -1,25 +1,14 @@
-"""
-A tiny Task Manager API — built for learning Python + Git + Docker.
-
-Endpoints:
-  GET    /tasks         -> list all tasks
-  POST   /tasks          -> create a task
-  GET    /tasks/{id}     -> get one task
-  PUT    /tasks/{id}     -> update a task
-  DELETE /tasks/{id}     -> delete a task
-  GET    /health         -> health check (useful for Docker healthchecks)
-"""
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
 from pydantic import BaseModel
-from typing import Optional
+from sqlalchemy.orm import Session
 from uuid import uuid4
 
-app = FastAPI(title="Task API", version="1.0.0")
+from app.database import Base, engine, SessionLocal
+from app.models import Task
 
-# In-memory "database" - resets every time the container restarts.
-# Swap this for a real database (Postgres, SQLite, etc.) once you're
-# comfortable with the basics.
-tasks: dict[str, dict] = {}
+Base.metadata.create_all(bind=engine)
+
+app = FastAPI(title="Task API", version="1.0.0")
 
 
 class TaskIn(BaseModel):
@@ -30,6 +19,17 @@ class TaskIn(BaseModel):
 class TaskOut(TaskIn):
     id: str
 
+    class Config:
+        from_attributes = True
+
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
 
 @app.get("/health")
 def health():
@@ -37,37 +37,43 @@ def health():
 
 
 @app.get("/tasks", response_model=list[TaskOut])
-def list_tasks():
-    return list(tasks.values())
+def list_tasks(db: Session = Depends(get_db)):
+    return db.query(Task).all()
 
 
 @app.post("/tasks", response_model=TaskOut, status_code=201)
-def create_task(task: TaskIn):
-    task_id = str(uuid4())
-    record = {"id": task_id, **task.model_dump()}
-    tasks[task_id] = record
-    return record
+def create_task(task: TaskIn, db: Session = Depends(get_db)):
+    db_task = Task(id=str(uuid4()), title=task.title, done=task.done)
+    db.add(db_task)
+    db.commit()
+    db.refresh(db_task)
+    return db_task
 
 
 @app.get("/tasks/{task_id}", response_model=TaskOut)
-def get_task(task_id: str):
-    task = tasks.get(task_id)
-    if not task:
+def get_task(task_id: str, db: Session = Depends(get_db)):
+    db_task = db.query(Task).filter(Task.id == task_id).first()
+    if not db_task:
         raise HTTPException(status_code=404, detail="Task not found")
-    return task
+    return db_task
 
 
 @app.put("/tasks/{task_id}", response_model=TaskOut)
-def update_task(task_id: str, task: TaskIn):
-    if task_id not in tasks:
+def update_task(task_id: str, task: TaskIn, db: Session = Depends(get_db)):
+    db_task = db.query(Task).filter(Task.id == task_id).first()
+    if not db_task:
         raise HTTPException(status_code=404, detail="Task not found")
-    record = {"id": task_id, **task.model_dump()}
-    tasks[task_id] = record
-    return record
+    db_task.title = task.title
+    db_task.done = task.done
+    db.commit()
+    db.refresh(db_task)
+    return db_task
 
 
 @app.delete("/tasks/{task_id}", status_code=204)
-def delete_task(task_id: str):
-    if task_id not in tasks:
+def delete_task(task_id: str, db: Session = Depends(get_db)):
+    db_task = db.query(Task).filter(Task.id == task_id).first()
+    if not db_task:
         raise HTTPException(status_code=404, detail="Task not found")
-    del tasks[task_id]
+    db.delete(db_task)
+    db.commit()
