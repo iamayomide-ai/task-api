@@ -1,95 +1,78 @@
-# Task API — Python + Git + Docker Practice Project
+# Task API
 
-A tiny task-manager REST API (built with FastAPI) meant as a hands-on
-sandbox for practicing three skills at once: writing Python, managing
-the code with Git, and running it in Docker.
+A RESTful task management API built with **Python (FastAPI)**, featuring JWT authentication, per-user data isolation, and a persistent SQLite database — containerized with **Docker** and tested with **pytest**.
+
+## Features
+
+- User signup and login with JWT-based authentication
+- Passwords securely hashed with bcrypt (never stored in plain text)
+- Full CRUD for tasks (create, read, update, delete)
+- Each user can only access their own tasks
+- Persistent storage via SQLite + SQLAlchemy ORM
+- Dockerized for consistent, portable deployment
+- Automated test suite (pytest) covering auth, ownership, and CRUD operations
+- Continuous Integration via GitHub Actions
+
+## Tech Stack
+
+Python · FastAPI · SQLAlchemy · SQLite · JWT (python-jose) · bcrypt (passlib) · Docker · pytest · GitHub Actions · Git
 
 ## Project layout
 
-```
 task-api/
 ├── app/
-│   ├── __init__.py
-│   └── main.py          # the API
+│ ├── main.py # API routes
+│ ├── models.py # Database table definitions
+│ ├── database.py # Database connection setup
+│ └── auth.py # Password hashing & JWT tokens
 ├── tests/
-│   └── test_main.py     # pytest tests
+│ └── test_main.py # Automated test suite
+├── .github/workflows/
+│ └── ci.yml # CI pipeline
 ├── requirements.txt
 ├── Dockerfile
 ├── docker-compose.yml
-├── .gitignore
 └── README.md
-```
 
-## 1. Run it locally with plain Python (no Docker yet)
+
+## Running locally
 
 ```bash
 python -m venv .venv
-source .venv/bin/activate      # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
+source .venv/Scripts/activate      # Windows
+# source .venv/bin/activate        # Mac/Linux
 
+pip install -r requirements.txt
 uvicorn app.main:app --reload
 ```
 
-Visit http://localhost:8000/docs for the interactive Swagger UI.
+Visit `http://localhost:8000/docs` for interactive API documentation.
 
-Run the tests:
-```bash
-pytest
-```
+## Running with Docker
 
-## 2. Turn it into a Git repo
-
-```bash
-git init
-git add .
-git commit -m "Initial commit: task API skeleton"
-```
-
-Good next reps for Git practice:
-- Create a `feature/add-priority-field` branch, add a `priority` field
-  to `TaskIn`, commit, then merge it back to `main`.
-- Make a bad commit on purpose, then practice `git reset --soft HEAD~1`
-  or `git revert`.
-- Push to GitHub/GitLab and open a pull request against your own `main`.
-- Try `git log --oneline --graph` to visualize your branch history.
-
-## 3. Run it with Docker
-
-Build and run manually:
 ```bash
 docker build -t task-api .
 docker run -p 8000:8000 task-api
 ```
 
-Or with Compose (rebuilds + mounts your code for live-reload):
+## Running tests
+
 ```bash
-docker compose up --build
+python -m pytest -v
 ```
 
-Check the container's health status:
-```bash
-docker ps          # look at the STATUS column
-docker inspect --format='{{json .State.Health}}' <container_id>
-```
+## API Overview
 
-Good next reps for Docker practice:
-- Add a second service to `docker-compose.yml` — e.g. swap the
-  in-memory `tasks` dict for a real Postgres database and connect
-  to it from `app/main.py`.
-- Multi-stage build: split the Dockerfile into a "builder" stage and
-  a slim "runtime" stage to shrink the final image.
-- Push your image to Docker Hub: `docker tag task-api yourname/task-api`
-  then `docker push yourname/task-api`.
-- Add a `.dockerignore` file so `.venv/`, `.git/`, etc. never get
-  copied into the image context.
+| Method | Endpoint | Description | Auth required |
+|--------|----------|--------------|----------------|
+| POST | `/signup` | Create a new account | No |
+| POST | `/login` | Log in, receive a JWT token | No |
+| GET | `/tasks` | List your tasks | Yes |
+| POST | `/tasks` | Create a task | Yes |
+| GET | `/tasks/{id}` | Get a single task | Yes |
+| PUT | `/tasks/{id}` | Update a task | Yes |
+| DELETE | `/tasks/{id}` | Delete a task | Yes |
 
-## 4. Combine both: a simple CI mindset
+## Notes
 
-Once comfortable, try wiring up a GitHub Actions workflow
-(`.github/workflows/ci.yml`) that on every push:
-1. Installs dependencies
-2. Runs `pytest`
-3. Builds the Docker image
-
-That gives you one project touching Python, Git branching/PRs, Docker,
-and (optionally) CI — a solid all-in-one practice loop.
+Migrated from in-memory storage to a persistent SQLite database, and resolved a real dependency conflict between `passlib` and `bcrypt` during authentication setup.
