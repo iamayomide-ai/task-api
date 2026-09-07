@@ -2,6 +2,16 @@
 
 A RESTful task management API built with **Python (FastAPI)**, featuring JWT authentication, per-user data isolation, and a persistent SQLite database — containerized with **Docker** and tested with **pytest**.
 
+## Why I Built This
+
+Most tutorial CRUD APIs skip the parts that make an API production-ready — 
+they store data in memory, skip auth, or let any user see any record. I built 
+Task API to practice the patterns that actually matter in real systems: 
+per-user data isolation, hashed credentials, persistent storage, automated 
+tests, and a CI pipeline that runs the test suite on every push. The goal 
+was a small API that looks and behaves like something you'd actually deploy, 
+not just a demo.
+
 ## Features
 
 - User signup and login with JWT-based authentication
